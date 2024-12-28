@@ -1,11 +1,38 @@
 #include <SFML/Graphics.hpp>
-#include <iostream>
-using namespace std;
+#include <vector>
+#include <cstdlib>
+#include <ctime>
+
+// Obstacle class
+class Obstacle
+{
+public:
+    sf::RectangleShape shape;
+    float speed;
+
+    Obstacle(float x, float y, float size, float speed)
+        : speed(speed)
+    {
+        shape.setSize(sf::Vector2f(size, size));
+        shape.setFillColor(sf::Color::Red);
+        shape.setPosition({ x, y });
+    }
+
+    void move()
+    {
+        shape.move({ speed, 0 });
+    }
+
+    bool isOffScreen(float windowWidth) const
+    {
+        return shape.getPosition().x > windowWidth;
+    }
+};
 
 int main()
 {
-    // create the window
-    sf::RenderWindow window(sf::VideoMode({ 960 ,540 }), "Jumpy Jack");
+    // Create the window
+    sf::RenderWindow window(sf::VideoMode({ 960, 540 }), "Jumpy Jack");
     window.setFramerateLimit(144);
 
     // Ground
@@ -16,21 +43,30 @@ int main()
     // Player
     sf::RectangleShape player(sf::Vector2f(80.f, 80.f));
     player.setFillColor(sf::Color(0, 0, 0));
-    player.setPosition({ (player.getSize().x) * 3 , window.getSize().y - ground.getSize().y - player.getSize().y });
+    player.setPosition({ (player.getSize().x) * 3, window.getSize().y - ground.getSize().y - player.getSize().y });
 
     // Player velocity & gravity
     bool isJumping = false;
-    const float gravity = 5.f;
-    const float jumpVelocity = -45.f;
+    const float gravity = 1.0f;
+    const float jumpVelocity = -15.f;
     float playerVelocityY = 0.f;
 
-    // run the program as long as the window is open
+    // Obstacles
+    std::vector<Obstacle> obstacles;
+    const float obstacleSize = 40.f;
+    const float obstacleSpeed = -10.f;
+    const float spawnInterval = 1.f; // spawn every 2 seconds
+    float spawnTimer = 0.f;
+
+    std::srand(std::time(0));
+
+    // Run the program as long as the window is open
     while (window.isOpen())
     {
-        // check all the window's events that were triggered since the last iteration of the loop
+        // Check all the window's events that were triggered since the last iteration of the loop
         while (const std::optional event = window.pollEvent())
         {
-            // "close requested" event: we close the window
+            // "Close requested" event: we close the window
             if (event->is<sf::Event::Closed>())
             {
                 window.close();
@@ -39,7 +75,7 @@ int main()
             // *** PLAYER MOVEMENTS ***
             else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>())
             {
-                // spacebar: player jump
+                // Spacebar: player jump
                 if (keyPressed->scancode == sf::Keyboard::Scan::Space && !isJumping)
                 {
                     playerVelocityY = jumpVelocity;
@@ -60,14 +96,43 @@ int main()
             isJumping = false;
         }
 
-        // clear the window with black color
+        // Spawn obstacles
+        spawnTimer += 1.f / 144; // assuming 144 FPS
+        if (spawnTimer >= spawnInterval)
+        {
+            spawnTimer = 0.f;
+            //float obstacleY = window.getSize().y - ground.getSize().y - obstacleSize;
+            float obstacleX = window.getSize().x - obstacleSize;
+            float obstacleY = 200.f;
+            obstacles.emplace_back(obstacleX, obstacleY, obstacleSize, obstacleSpeed);
+        }
+
+        // Move and remove obstacles
+        for (auto it = obstacles.begin(); it != obstacles.end(); )
+        {
+            it->move();
+            if (it->isOffScreen(window.getSize().x))
+            {
+                it = obstacles.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        // Clear the window with white color
         window.clear(sf::Color::White);
 
         // Draw entities to screen
         window.draw(ground);
         window.draw(player);
+        for (const auto& obstacle : obstacles)
+        {
+            window.draw(obstacle.shape);
+        }
 
-        // end the current frame
+        // End the current frame
         window.display();
     }
 }
