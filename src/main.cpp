@@ -10,10 +10,10 @@ public:
     sf::RectangleShape shape;
     float speed;
 
-    Obstacle(float x, float y, float size, float speed)
+    Obstacle(float x, float y, float width, float height, float speed)
         : speed(speed)
     {
-        shape.setSize(sf::Vector2f(size, size));
+        shape.setSize(sf::Vector2f(width, height));
         shape.setFillColor(sf::Color::Red);
         shape.setPosition({ x, y });
     }
@@ -33,7 +33,7 @@ int main()
 {
     // Create the window
     sf::RenderWindow window(sf::VideoMode({ 960, 540 }), "Jumpy Jack");
-    window.setFramerateLimit(144);
+    window.setFramerateLimit(60);
 
     // Ground
     sf::RectangleShape ground(sf::Vector2f(window.getSize().x, 80.f));
@@ -53,10 +53,20 @@ int main()
 
     // Obstacles
     std::vector<Obstacle> obstacles;
-    const float obstacleSize = 40.f;
     const float obstacleSpeed = -10.f;
-    const float spawnInterval = 1.f; // spawn every 2 seconds
+    const float spawnInterval = 0.5f; // spawn every 0.5 seconds
     float spawnTimer = 0.f;
+
+    // Possible obst. sizes
+    std::vector<sf::Vector2f> obstacleSizes = {
+        {40.f, 20.f},
+        {50.f, 40.f},
+        {30.f, 50.f},
+        {10.f, 50.f},
+        {20.f, 60.f},
+        {60.f, 70.f},
+        {30.f, 80.f},
+    };
 
     std::srand(std::time(0));
 
@@ -97,14 +107,18 @@ int main()
         }
 
         // Spawn obstacles
-        spawnTimer += 1.f / 144; // assuming 144 FPS
+        spawnTimer += 1.f / 60; // assuming 60 FPS
         if (spawnTimer >= spawnInterval)
         {
             spawnTimer = 0.f;
-            //float obstacleY = window.getSize().y - ground.getSize().y - obstacleSize;
-            float obstacleX = window.getSize().x - obstacleSize;
-            float obstacleY = 200.f;
-            obstacles.emplace_back(obstacleX, obstacleY, obstacleSize, obstacleSpeed);
+            // Choose random obstacle shape
+            sf::Vector2f randomSize = obstacleSizes[std::rand() % obstacleSizes.size()];
+            // spawning location of obstacle
+            float obstacleX = window.getSize().x + randomSize.x;
+            float minY = 100.f;
+            float maxY = window.getSize().y - ground.getSize().y - randomSize.y;
+            float obstacleY = minY + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX / (maxY - minY));
+            obstacles.emplace_back(obstacleX, obstacleY, randomSize.x, randomSize.y, obstacleSpeed);
         }
 
         // Move and remove obstacles
