@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstdlib>
 #include <ctime>
+#include <sstream>
 
 // Obstacle class
 class Obstacle
@@ -34,6 +35,24 @@ int main()
     // Create the window
     sf::RenderWindow window(sf::VideoMode({ 960, 540 }), "Jumpy Jack");
     window.setFramerateLimit(60);
+
+    // Loading font
+    sf::Font font;
+    if (!font.openFromFile("..\\..\\..\\..\\fonts\\framd.ttf"))             // path should be relative to executable
+    {
+        return -1;
+    }
+              
+    // Scoring system
+    int score = 0;
+    sf::Text scoreText(font);
+    scoreText.setCharacterSize(24);
+    scoreText.setFillColor(sf::Color::Black);
+    scoreText.setPosition({ window.getSize().x - 200.f, 10.f });
+
+    // Score timer 
+    float scoreTimer = 0.f; 
+    const float scoreInterval = 1.f; // increment score every 1 second
 
     // Ground
     sf::RectangleShape ground(sf::Vector2f(window.getSize().x, 80.f));
@@ -107,7 +126,7 @@ int main()
         }
 
         // Spawn obstacles
-        spawnTimer += 1.f / 60; // assuming 60 FPS
+        spawnTimer += 1.f / 60; // 60 FPS
         if (spawnTimer >= spawnInterval)
         {
             spawnTimer = 0.f;
@@ -135,12 +154,26 @@ int main()
             }
         }
 
+        // Updating score
+        scoreTimer += 1.f / 60;
+        if (scoreTimer >= scoreInterval) 
+        {
+            scoreTimer = 0.f; // reset the timer 
+            score += 1; // increment the score 
+        }
+
+        // Updating score text
+        std::stringstream ss;
+        ss << "Score: " << score; 
+        scoreText.setString(ss.str());
+
         // Clear the window with white color
         window.clear(sf::Color::White);
 
         // Draw entities to screen
         window.draw(ground);
         window.draw(player);
+        window.draw(scoreText);
         for (const auto& obstacle : obstacles)
         {
             window.draw(obstacle.shape);
