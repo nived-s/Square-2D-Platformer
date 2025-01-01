@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
+#include <iostream>
 
 // Obstacle class
 class Obstacle
@@ -60,14 +61,14 @@ int main()
     ground.setPosition({ 0.f, window.getSize().y - ground.getSize().y });
 
     // Player
-    sf::RectangleShape player(sf::Vector2f(80.f, 80.f));
+    sf::RectangleShape player(sf::Vector2f(50.f, 120.f));
     player.setFillColor(sf::Color(0, 0, 0));
     player.setPosition({ (player.getSize().x) * 3, window.getSize().y - ground.getSize().y - player.getSize().y });
 
     // Player velocity & gravity
     bool isJumping = false;
     const float gravity = 1.0f;
-    const float jumpVelocity = -15.f;
+    const float jumpVelocity = -22.f;
     float playerVelocityY = 0.f;
 
     // Obstacles
@@ -88,6 +89,9 @@ int main()
     };
 
     std::srand(std::time(0));
+
+    // Game state
+    bool isGameRunning = true;
 
     // Run the program as long as the window is open
     while (window.isOpen())
@@ -113,54 +117,68 @@ int main()
             }
         }
 
-        // Apply gravity and make player jump
-        playerVelocityY += gravity;
-        player.move({ 0, playerVelocityY });
-
-        // Check if player landed back on ground
-        if (player.getPosition().y >= window.getSize().y - ground.getSize().y - player.getSize().y)
+        // Game is running without collision
+        if (isGameRunning)
         {
-            player.setPosition({ player.getPosition().x, window.getSize().y - ground.getSize().y - player.getSize().y });
-            playerVelocityY = 0.f;
-            isJumping = false;
-        }
+            // Apply gravity and make player jump
+            playerVelocityY += gravity;
+            player.move({ 0, playerVelocityY });
 
-        // Spawn obstacles
-        spawnTimer += 1.f / 60; // 60 FPS
-        if (spawnTimer >= spawnInterval)
-        {
-            spawnTimer = 0.f;
-            // Choose random obstacle shape
-            sf::Vector2f randomSize = obstacleSizes[std::rand() % obstacleSizes.size()];
-            // spawning location of obstacle
-            float obstacleX = window.getSize().x + randomSize.x;
-            float minY = 100.f;
-            float maxY = window.getSize().y - ground.getSize().y - randomSize.y;
-            float obstacleY = minY + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX / (maxY - minY));
-            obstacles.emplace_back(obstacleX, obstacleY, randomSize.x, randomSize.y, obstacleSpeed);
-        }
-
-        // Move and remove obstacles
-        for (auto it = obstacles.begin(); it != obstacles.end(); )
-        {
-            it->move();
-            if (it->isOffScreen(window.getSize().x))
+            // Check if player landed back on ground
+            if (player.getPosition().y >= window.getSize().y - ground.getSize().y - player.getSize().y)
             {
-                it = obstacles.erase(it);
+                player.setPosition({ player.getPosition().x, window.getSize().y - ground.getSize().y - player.getSize().y });
+                playerVelocityY = 0.f;
+                isJumping = false;
             }
-            else
-            {
-                ++it;
-            }
-        }
 
-        // Updating score
-        scoreTimer += 1.f / 60;
-        if (scoreTimer >= scoreInterval) 
-        {
-            scoreTimer = 0.f; // reset the timer 
-            score += 1; // increment the score 
-        }
+            // Spawn obstacles
+            spawnTimer += 1.f / 60; // 60 FPS
+            if (spawnTimer >= spawnInterval)
+            {
+                spawnTimer = 0.f;
+                // Choose random obstacle shape
+                sf::Vector2f randomSize = obstacleSizes[std::rand() % obstacleSizes.size()];
+                // spawning location of obstacle
+                float obstacleX = window.getSize().x + randomSize.x;
+                float minY = 150.f;
+                float maxY = window.getSize().y - ground.getSize().y - randomSize.y;
+                float obstacleY = minY + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX / (maxY - minY));
+                obstacles.emplace_back(obstacleX, obstacleY, randomSize.x, randomSize.y, obstacleSpeed);
+            }
+
+            // Move and remove obstacles
+            for (auto it = obstacles.begin(); it != obstacles.end(); )
+            {
+                it->move();
+                if (it->isOffScreen(window.getSize().x))
+                {
+                    it = obstacles.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+
+            // Collision detection using AABB
+            for (const auto& obstacle : obstacles)
+            {
+                if (player.getGlobalBounds().findIntersection(obstacle.shape.getGlobalBounds()))
+                {
+                    // set flag to stop game state
+                    isGameRunning = false;
+                }
+            }
+
+            // Updating score
+            scoreTimer += 1.f / 60;
+            if (scoreTimer >= scoreInterval)
+            {
+                scoreTimer = 0.f; // reset the timer 
+                score += 1; // increment the score 
+            }
+        }        
 
         // Updating score text
         std::stringstream ss;
@@ -177,6 +195,19 @@ int main()
         for (const auto& obstacle : obstacles)
         {
             window.draw(obstacle.shape);
+        }
+
+        // Collision is detected and game needs to stop
+        if (!isGameRunning)
+        {
+            // Display "Game Ended" text 
+            sf::Text endText(font); 
+            endText.setCharacterSize(48); 
+            endText.setFillColor(sf::Color::Red); 
+            endText.setString("Game Ended"); 
+            // align the text message to screen centre
+            endText.setPosition({ window.getSize().x / 2.f - endText.getGlobalBounds().size.x / 2.f, window.getSize().y / 2.f - ground.getSize().y - endText.getGlobalBounds().size.y / 2.f});
+            window.draw(endText);
         }
 
         // End the current frame
